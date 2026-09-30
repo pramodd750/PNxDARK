@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Pricing — PN VPS{% endblock %}
+{% block body %}
+<div class="wrap">
+  <section class="section-sm" style="padding-top:60px">
+    <div class="eyebrow">Pricing matrix</div>
+    <h1>Pricing <span class="grad">&amp; plans.</span></h1>
+    <p class="lede" style="margin-top:18px">Pick a plan. Tap buy. You'll be taken straight to Telegram to complete the purchase.</p>
+  </section>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+    {% for p in pricing.plans %}
+    <div class="plan {% if loop.index == 3 %}popular{% endif %}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+        <div>
+          <div class="dim">Plan {{'%02d'|format(loop.index)}}</div>
+          <h3 style="margin-top:8px">{{p.name}}</h3>
+        </div>
+        {% if loop.index == 3 %}<span class="badge badge-gold">★ Popular</span>{% endif %}
+      </div>
+      <div style="font-size:56px;font-weight:600;line-height:1;letter-spacing:-1.5px" class="grad">{{pricing.currency}}{{p.price}}</div>
+      <div class="muted" style="margin-top:12px">{{p.duration}}</div>
+      <div style="height:1px;background:var(--border);margin:20px 0"></div>
+      <div class="muted" style="min-height:64px;line-height:1.9">{{p.features}}</div>
+      <a href="{{ buy_url }}" target="_blank" rel="noopener" class="btn btn-primary btn-block" style="margin-top:22px">Buy Now →</a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="surface" style="margin-top:24px;text-align:center;padding:40px 28px">
+    <div class="eyebrow" style="justify-content:center">How to purchase</div>
+    <h3 style="margin-bottom:14px">✈ Buy on Telegram</h3>
+    <p class="muted" style="margin-bottom:18px">Tap any plan or the button below — you'll open our Telegram bot directly.</p>
+    <a href="{{ buy_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="font-size:13px;padding:14px 28px">
+      Open Telegram → @PR4MOD_DM_bot
+    </a>
+  </div>
+</div>
+
+<style>
+.plan{
+  padding:32px;border-radius:20px;background:#fff;border:1px solid var(--border);
+  display:flex;flex-direction:column;transition:all .3s;box-shadow:var(--shadow-sm);
+}
+.plan:hover{border-color:var(--border-2);transform:translateY(-4px);box-shadow:var(--shadow-md)}
+.plan.popular{
+  background:linear-gradient(180deg,rgba(124,58,237,0.05),rgba(219,39,119,0.03)),#fff;
+  border-color:rgba(124,58,237,0.28);
+  box-shadow:0 12px 40px rgba(124,58,237,0.14);
+}
+</style>
+{% endblock %}

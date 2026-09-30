@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}{{username}} — PN VPS{% endblock %}
+{% block body %}
+<div class="wrap">
+
+  <section class="section-sm" style="padding-top:50px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px">
+      <div style="display:flex;align-items:center;gap:18px">
+        <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#0891b2,#7c3aed);display:grid;place-items:center;font-size:24px;color:#fff;box-shadow:0 10px 28px rgba(8,145,178,0.3)">🖥️</div>
+        <div>
+          <div class="eyebrow" style="margin-bottom:6px">Control panel</div>
+          <h1 style="font-size:28px">{{username}}'s VPS</h1>
+          <div style="margin-top:8px">
+            {% if running %}<span class="badge badge-on">● Running</span> <span class="muted" style="margin-left:8px;font-size:11px">{{running_file}}</span>
+            {% else %}<span class="badge badge-off">○ Stopped</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% if expires_at %}
+      <div class="surface" style="padding:14px 22px;margin:0">
+        <div class="dim" style="font-size:9px">Expires in</div>
+        <div style="font-weight:600;font-size:22px;margin-top:4px" class="grad">{{ ((expires_at-now)/86400)|round(1) }} days</div>
+      </div>
+      {% else %}
+      <div class="surface" style="padding:14px 22px;margin:0">
+        <div class="dim" style="font-size:9px">Account type</div>
+        <div style="font-weight:600;font-size:22px;margin-top:4px" class="grad">∞ Lifetime</div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="split-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div>
+      <div class="surface surface-hover">
+        <div class="eyebrow">Upload</div>
+        <h3 style="margin-bottom:16px">📤 File upload</h3>
+        <form method="post" action="/upload" enctype="multipart/form-data" class="row">
+          <input type="file" name="files" multiple required style="flex:1">
+          <button class="btn btn-primary">Upload</button>
+        </form>
+        <p class="muted" style="margin-top:12px">.py · .js · .sh · .html · .json · any (max 200MB)</p>
+      </div>
+
+      <div class="surface surface-hover">
+        <div class="eyebrow">Files</div>
+        <h3 style="margin-bottom:16px">📁 File manager ({{files|length}})</h3>
+        <ul style="list-style:none;padding:0;margin:0;max-height:280px;overflow:auto">
+          {% for f in files %}
+          <li style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 4px;border-bottom:1px solid var(--border);font-size:12.5px">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 {{f}}</span>
+            <span style="display:flex;gap:6px;flex-shrink:0">
+              <a href="/file/view/{{f}}" target="_blank"><button class="btn btn-ghost btn-sm" type="button">View</button></a>
+              {% if f.endswith('.py') or f.endswith('.js') or f.endswith('.mjs') or f.endswith('.sh') %}
+              <button class="btn btn-ok btn-sm" onclick="startFile('{{f}}')">▶</button>
+              {% endif %}
+              <form class="inline" method="post" action="/file/delete/{{f}}" onsubmit="return confirm('Delete {{f}}?')">
+                <button class="btn btn-danger btn-sm">×</button>
+              </form>
+            </span>
+          </li>
+          {% else %}
+          <li class="muted" style="padding:24px;text-align:center">No files yet. Upload one above.</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="surface surface-hover">
+        <div class="eyebrow">Modules</div>
+        <h3 style="margin-bottom:16px">📦 Install module</h3>
+        <form class="row" onsubmit="return doInstall(event)">
+          <input id="cmd" placeholder="pip install requests" style="flex:1" required>
+          <button class="btn btn-primary">Install</button>
+        </form>
+        <p class="muted" style="margin:12px 0 12px">Allowed: <code>pip install &lt;mod&gt;</code> or <code>npm install &lt;mod&gt;</code></p>
+        <div id="installLogs" class="term" style="color:#67e8f9;font-size:11px;height:150px"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="surface surface-hover">
+        <div class="eyebrow">Controls</div>
+        <h3 style="margin-bottom:16px">⚙️ Server control</h3>
+        <div class="row">
+          <button class="btn btn-warn" onclick="restart()">🔄 Restart</button>
+          <button class="btn btn-danger" onclick="stop()">⏹ Stop</button>
+          <button class="btn btn-ghost" onclick="delServer()">🗑 Clear</button>
+        </div>
+      </div>
+
+      <div class="term-wrap">
+        <div class="term-bar">
+          <span class="d d1"></span><span class="d d2"></span><span class="d d3"></span>
+          <span class="title">Live logs — streaming</span>
+        </div>
+        <div id="logs" class="term" style="border:0;border-radius:0;height:520px;min-height:520px">Waiting for output...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function post(url, body){
+  const r = await fetch(url,{method:'POST',body: body || new FormData()});
+  return r.json();
+}
+async function startFile(f){
+  const fd=new FormData(); fd.append('file',f);
+  const r=await post('/server/start',fd);
+  if(!r.ok) alert(r.msg);
+  setTimeout(()=>location.reload(),600);
+}
+async function restart(){ const r=await post('/server/restart'); if(!r.ok) alert(r.msg||'no file running'); }
+async function stop(){ await post('/server/stop'); }
+async function delServer(){ if(confirm('Stop and clear process?')) await post('/server/delete'); }
+async function doInstall(e){
+  e.preventDefault();
+  const fd=new FormData(); fd.append('command',document.getElementById('cmd').value);
+  const r=await post('/install',fd);
+  if(!r.ok) alert(r.msg);
+  return false;
+}
+const logBox=document.getElementById('logs'), instBox=document.getElementById('installLogs');
+async function tick(){
+  try{
+    const r=await fetch('/logs'); const j=await r.json();
+    const atBottom = logBox.scrollTop + logBox.clientHeight >= logBox.scrollHeight - 30;
+    logBox.textContent = j.logs.length ? j.logs.join('\n') : 'Waiting for output...';
+    if(atBottom) logBox.scrollTop = logBox.scrollHeight;
+    instBox.textContent = j.install.join('\n');
+    instBox.scrollTop = instBox.scrollHeight;
+  }catch(e){}
+}
+setInterval(tick,1500); tick();
+</script>
+{% endblock %}

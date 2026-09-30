@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Owner Console — PN VPS{% endblock %}
+{% block body %}
+<div class="wrap">
+
+  <section class="section-sm" style="padding-top:60px">
+    <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+      <div style="width:56px;height:56px;border-radius:16px;background:var(--grad);display:grid;place-items:center;font-size:24px;color:#fff;box-shadow:0 10px 28px rgba(124,58,237,0.35)">👑</div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:6px">Owner access</div>
+        <h1 style="font-size:34px">Owner Console</h1>
+        <p class="muted" style="margin-top:4px">Manage users, plans and pricing</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CREATE USER -->
+  <section style="margin-bottom:22px">
+    <div class="surface">
+      <div class="eyebrow">Create user</div>
+      <h2 style="font-size:22px;margin-bottom:20px">New account</h2>
+      <form method="post" action="/owner/create" class="row">
+        <input name="username" placeholder="Username" required>
+        <input name="password" placeholder="Password" required>
+        <div style="position:relative;min-width:160px;flex:0 0 auto">
+          <input name="days" type="number" step="1" min="0" value="1" required placeholder="Days" style="padding-right:70px">
+          <span style="position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;pointer-events:none">days</span>
+        </div>
+        <button class="btn btn-primary">Create →</button>
+      </form>
+      <p class="muted" style="margin-top:14px">Set <b style="color:var(--ink)">0 days</b> for a lifetime account (never expires).</p>
+    </div>
+  </section>
+
+  <!-- USERS -->
+  <section style="margin-bottom:22px">
+    <div class="surface">
+      <div class="eyebrow">User registry</div>
+      <h2 style="font-size:22px;margin-bottom:20px">Active users ({{users|length}})</h2>
+      {% if not users %}<p class="muted">No users yet. Create one above.</p>{% endif %}
+      {% if users %}
+      <div style="overflow-x:auto">
+      <table style="table-layout:auto;font-size:12.5px">
+        <tr>
+          <th style="padding:12px 8px">User</th>
+          <th style="padding:12px 8px">Password</th>
+          <th style="padding:12px 8px">Expires</th>
+          <th style="padding:12px 8px">Auto-login</th>
+          <th style="padding:12px 8px">Actions</th>
+        </tr>
+        {% for name, u in users.items() %}
+        {% set remain = (u.expires_at - now) if u.expires_at else 0 %}
+        <tr>
+          <td style="padding:12px 8px"><b>{{name}}</b></td>
+          <td style="padding:12px 8px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <code style="font-size:11px;padding:2px 8px">{{u.password}}</code>
+          </td>
+          <td style="padding:12px 8px;white-space:nowrap">
+            {% if not u.expires_at %}
+              <span class="badge badge-gold" style="padding:4px 10px;font-size:9.5px">∞ Lifetime</span>
+            {% elif remain > 0 %}
+              <span class="badge badge-on" style="padding:4px 10px;font-size:9.5px">{{ (remain/86400)|round(1) }} d</span>
+            {% else %}
+              <span class="badge badge-off" style="padding:4px 10px;font-size:9.5px">Expired</span>
+            {% endif %}
+          </td>
+          <td style="padding:12px 8px;white-space:nowrap">
+            <div style="display:flex;gap:4px">
+              <button type="button" class="btn btn-ghost btn-sm" style="padding:6px 10px;letter-spacing:1px" onclick="copyLink('{{base_url}}/auto/{{u.token}}', this)">Copy</button>
+              <a href="{{base_url}}/auto/{{u.token}}" target="_blank" rel="noopener">
+                <button type="button" class="btn btn-primary btn-sm" style="padding:6px 10px;letter-spacing:1px">Open</button>
+              </a>
+            </div>
+          </td>
+          <td style="padding:12px 8px;white-space:nowrap">
+            <div style="display:flex;gap:4px;align-items:center">
+              <form method="post" action="/owner/extend/{{name}}" style="display:inline-flex;gap:4px;align-items:center;margin:0">
+                <input name="days" type="number" step="1" min="0" value="1" style="width:50px;padding:6px 8px;font-size:11px;text-align:center">
+                <button class="btn btn-ok btn-sm" style="padding:6px 10px;letter-spacing:0">+</button>
+              </form>
+              <form method="post" action="/owner/delete/{{name}}" onsubmit="return confirm('Delete {{name}}?')" style="display:inline;margin:0">
+                <button class="btn btn-danger btn-sm" style="padding:6px 10px;letter-spacing:0">×</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="pricing" style="margin-bottom:40px">
+    <div class="surface">
+      <div class="eyebrow">Pricing editor</div>
+      <h2 style="font-size:22px;margin-bottom:8px">Plan configuration</h2>
+      <p class="muted" style="margin-bottom:22px">These plans appear on the public Home & Pricing pages. Every "Buy Now" button redirects to <b style="color:var(--ink)">t.me/PR4MOD_DM_bot</b>.</p>
+
+      <form method="post" action="/owner/pricing">
+        <div class="row" style="margin-bottom:20px">
+          <div style="min-width:110px">
+            <label class="field">Currency</label>
+            <input name="currency" value="{{pricing.currency}}">
+          </div>
+          <div style="flex:1;min-width:220px">
+            <label class="field">Contact (shown on pricing page)</label>
+            <input name="contact" value="{{pricing.contact}}" placeholder="Telegram: @PR4MOD_DM_bot">
+          </div>
+        </div>
+
+        <div id="plans">
+        {% for p in pricing.plans %}
+          <div class="row" style="margin-bottom:10px;padding:14px;background:rgba(124,58,237,0.03);border:1px solid var(--border);border-radius:14px">
+            <input name="p_name" value="{{p.name}}" placeholder="Plan name" style="max-width:150px">
+            <input name="p_duration" value="{{p.duration}}" placeholder="Duration" style="max-width:130px">
+            <input name="p_price" value="{{p.price}}" placeholder="Price" style="max-width:90px">
+            <input name="p_features" value="{{p.features}}" placeholder="Features (comma separated)">
+            <button type="button" class="btn btn-danger btn-sm" onclick="this.parentNode.remove()">×</button>
+          </div>
+        {% endfor %}
+        </div>
+
+        <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+          <button type="button" class="btn btn-ghost" onclick="addPlan()">+ Add plan</button>
+          <button class="btn btn-primary">Save pricing →</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
+
+<script>
+function addPlan(){
+  const d=document.createElement('div');
+  d.className='row';
+  d.style.cssText='margin-bottom:10px;padding:14px;background:rgba(124,58,237,0.03);border:1px solid rgba(14,14,22,0.07);border-radius:14px';
+  d.innerHTML='<input name="p_name" placeholder="Plan name" style="max-width:150px"><input name="p_duration" placeholder="Duration" style="max-width:130px"><input name="p_price" placeholder="Price" style="max-width:90px"><input name="p_features" placeholder="Features"><button type="button" class="btn btn-danger btn-sm" onclick="this.parentNode.remove()">×</button>';
+  document.getElementById('plans').appendChild(d);
+}
+function copyLink(url, btn){
+  const original = btn.textContent;
+  navigator.clipboard.writeText(url).then(()=>{
+    btn.textContent = '✓ Copied';
+    setTimeout(()=>{ btn.textContent = original; }, 1200);
+  }).catch(()=>{ prompt('Copy this link:', url); });
+}
+</script>
+{% endblock %}
